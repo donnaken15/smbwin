@@ -13,12 +13,16 @@ using namespace std;
 #pragma comment (lib, "d3d9.lib")
 #pragma comment (lib, "d3dx9.lib")
 
+uintptr_t frame,subframe;
+
 LPDIRECT3D9 d3d;
 LPDIRECT3DDEVICE9 d3ddev;
 
 LPDIRECT3DTEXTURE9 textures[1024];
 LPD3DXSPRITE sprites[1024];
-D3DXVECTOR2 scrVecs;
+RECT rects[1024];
+D3DXVECTOR2 pos[1024];
+int color;
 
 #define TEX_LOADING 0
 #define TEX_ADV_AMUSEVIS 0x00001
@@ -43,7 +47,7 @@ D3DXVECTOR2 scrVecs;
 #define TEX_ADV_LOGOS 0x00014
 #define TEX_ADV_LOGOU 0x00015
 #define TEX_ADV_LOGOP 0x00016
-#define TEX_ADV_LOGOE 0x00017
+#define TEX_ADV_LOGOE_RED 0x00017
 #define TEX_ADV_LOGOR 0x00018
 #define TEX_ADV_BLBALLSHD 0x00019
 #define TEX_ADV_TRDMRK 0x00020
@@ -124,7 +128,7 @@ D3DXVECTOR2 scrVecs;
 #define TEX_COM_DEMO_DIALOG 0x1004A
 #define TEX_COM_8PX_WHITE 0x1004B
 #define TEX_COM_UNKNOWN1 0x1004C
-#define TEX_COM_FACE_GG_ANGRY 0x1004D
+#define TEX_COM_FACE_GG_ANGRY2 0x1004D
 #define TEX_COM_FACE_GG_BLINK1 0x1004E
 #define TEX_COM_FACE_GG_BLINK2 0x1004F
 #define TEX_COM_HUD_FNT 0x10050
@@ -218,38 +222,108 @@ D3DXVECTOR2 scrVecs;
 #define TEX_NML_TIMER_PIECE9 0x30056
 #define TEX_NML_TIMER_PIECE10 0x30057
 #define TEX_RNK_DGT 0x30058
-#define TEX_RNK_FNT 0x30058
-#define TEX_RNK_A 0x30058
-#define TEX_RNK_G 0x30058
-#define TEX_RNK_I 0x30058
-#define TEX_RNK_K 0x30058
-#define TEX_RNK_N 0x30058
-#define TEX_RNK_R 0x30058
-#define TEX_RNK_TITLE 0x30058
-#define TEX_RNK_BEST_MST 0x30058
-#define TEX_RNK_BEST_EXT 0x30058
-#define TEX_RNK_CIRCLE 0x30058
-#define TEX_RNK_SMBLOGO 0x30058
-#define TEX_RNK_BLUE 0x30058
-#define TEX_RNK_GREEN 0x30058
-#define TEX_RNK_RED 0x30058
-#define TEX_RNK_ORANGE 0x30058
-#define TEX_RNK_MODES 0x30058
-#define TEX_RNK_12345TH 0x30058
-#define TEX_RNK_DLG_FNT 0x30058
-#define TEX_RNK_UNKNOWN1 0x30058
-#define TEX_RNK_BG_MAIN 0x30058
-#define TEX_RNK_8PX_WHITE 0x30058
-#define TEX_RNK_BESTLAP 0x30058
-#define TEX_RNK_STAR 0x30058
-#define TEX_RNK_PANEL_26_3 0x30058
-#define TEX_RNK_PANEL_61_6 0x30058
-#define TEX_RNK_REDCIRCL 0x30058
-#define TEX_RNK_R_CIRCL 0x30058
-#define TEX_RNK_T_CIRCL 0x30058
-#define TEX_RNK_RAC_DGT 0x30058
+#define TEX_RNK_FNT 0x30059
+#define TEX_RNK_A 0x3005A
+#define TEX_RNK_G 0x3005B
+#define TEX_RNK_I 0x3005C
+#define TEX_RNK_K 0x3005D
+#define TEX_RNK_N 0x3005E
+#define TEX_RNK_R 0x3005F
+#define TEX_RNK_TITLE 0x3005A
+#define TEX_RNK_BEST_MST 0x3005B
+#define TEX_RNK_BEST_EXT 0x3005C
+#define TEX_RNK_CIRCLE 0x3005D
+#define TEX_RNK_SMBLOGO 0x3005E
+#define TEX_RNK_BLUE 0x3005F
+#define TEX_RNK_GREEN 0x30060
+#define TEX_RNK_RED 0x30061
+#define TEX_RNK_ORANGE 0x30062
+#define TEX_RNK_MODES 0x30063
+#define TEX_RNK_12345TH 0x30064
+#define TEX_RNK_DLG_FNT 0x30065
+#define TEX_RNK_UNKNOWN1 0x30066
+#define TEX_RNK_BG_MAIN 0x30067
+#define TEX_RNK_8PX_WHITE 0x30068
+#define TEX_RNK_BESTLAP 0x30069
+#define TEX_RNK_STAR 0x3006A
+#define TEX_RNK_PANEL_26_3 0x3006B
+#define TEX_RNK_PANEL_61_6 0x3006C
+#define TEX_RNK_REDCIRCL 0x3006D
+#define TEX_RNK_R_CIRCL 0x3006E
+#define TEX_RNK_T_CIRCL 0x3006F
+#define TEX_RNK_RAC_DGT 0x30070
+#define TEX_RNK_PTN 0x30071
+#define TEX_RNK_PTS 0x30072
+#define TEX_RNK_PLS_MNS 0x30073
+#define TEX_RNK_12345TH2 0x30074
+#define TEX_RNK_DGT2 0x30075
+#define TEX_RNK_SCORE 0x30076
+#define TEX_RNK_PLRNUM 0x30077
+#define TEX_RNK_UNKNOWN2 0x30078
+#define TEX_RNK_BANANA 0x30079
+#define TEX_RNK_BANANA_RED 0x30080
+#define TEX_SEL_PRCT_BEG_EX_EN 0x40001
+#define TEX_SEL_PRCT_BEG_EX 0x40002
+#define TEX_SEL_PRCT_ADV_EX_EN 0x40003
+#define TEX_SEL_PRCT_ADV_EX 0x40004
+#define TEX_SEL_BG 0x40005
+#define TEX_SEL_FLOWER_GG 0x40006
+#define TEX_SEL_RACE_SEL 0x40007
+#define TEX_SEL_PANEL 0x40008
+#define TEX_SEL_UNKNOWN1 0x40009
+#define TEX_SEL_FIGHT_SEL 0x4000A
+#define TEX_SEL_UNKNOWN2 0x4000B
+#define TEX_SEL_STAR 0x4000C
+#define TEX_SEL_PANEL_13_4 0x4000D
+#define TEX_SEL_PANEL_13_2 0x4000E
+#define TEX_SEL_BUTTON 0x4000F
+#define TEX_SEL_PLAYERS 0x40010
+#define TEX_SEL_DISABLED 0x40011
+#define TEX_SEL_BTN_TITLES 0x40012
+#define TEX_SEL_PLAYER_SEL 0x40013
+#define TEX_SEL_FLOWER_AA 0x40014
+#define TEX_SEL_FLOWER_MM 0x40015
+#define TEX_SEL_FLOWER_BB 0x40016
+#define TEX_SEL_PANEL_68_11 0x40017
+#define TEX_SEL_PANEL_21_11 0x40018
+#define TEX_SEL_PANEL_14_5 0x40019
+#define TEX_SEL_PANEL_TAB1 0x4001A
+#define TEX_SEL_PANEL_TAB2 0x4001B
+#define TEX_SEL_LEVEL_DGT 0x4001C
+#define TEX_SEL_PRCT_BEG_EN 0x4001D
+#define TEX_SEL_PRCT_BEG 0x4001F
+#define TEX_SEL_PRCT_ADV_EN 0x4002A
+#define TEX_SEL_PRCT_ADV 0x4002B
+#define TEX_SEL_PRCT_EXP_EN 0x4002C
+#define TEX_SEL_PRCT_EXP 0x4002D
+#define TEX_SEL_PRCT_MST_EN 0x4002E
+#define TEX_SEL_PRCT_MST 0x4002F
+#define TEX_SEL_PANEL_TAB3 0x4002A
+#define TEX_SEL_PANEL_TAB4 0x4002B
+#define TEX_SEL_PRCT_EXP_EN 0x4002C
+#define TEX_SEL_PRCT_EXP 0x4002D
+#define TEX_SEL_STATIC 0x4002E
+#define TEX_SEL_STATIC_SML 0x4002F
+#define TEX_SEL_TV_FRAME 0x40030
+#define TEX_SEL_UNKNOWN3 0x40031
+#define TEX_SEL_ADVANCED 0x40032
+#define TEX_SEL_BEGINNER 0x40033
+#define TEX_SEL_EXPERT 0x40034
+#define TEX_SEL_DGT 0x40035
+#define TEX_SEL_DGTE 0x40036
+#define TEX_SEL_DIFF_ICON_SML 0x40037
+#define TEX_SEL_STATIC2 0x40038
+#define TEX_SEL_BOX 0x40039
+#define TEX_SEL_GAMESETTINGS 0x4003A
+#define TEX_SEL_ADV_BTN_EN 0x4003B
+#define TEX_SEL_ADV_BTN 0x4003C
+#define TEX_SEL_BEG_BTN_EN 0x4003D
+#define TEX_SEL_BEG_BTN 0x4003E
+#define TEX_SEL_EXP_BTN_EN 0x4003F
+#define TEX_SEL_EXP_BTN 0x40040
+#define TEX_SEL_BTN_GOLF 0x40041
 
-int overridden_version = 0;
+int overridden_version = 0, fade = 0;
 
 double pi = 3.1415926535897932384626433832795028841971693993751058209749445923;
 
@@ -262,6 +336,19 @@ D3DSWAPEFFECT overridden_swapfx = D3DSWAPEFFECT_DISCARD;
 void initD3D(HWND hWnd);
 void render_frame(void);
 void cleanD3D(void);
+void init_game(void);
+void command(LPWSTR exec, LPWSTR args);
+
+void command(LPWSTR exec, LPWSTR args) {
+	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	ShellExecute(NULL,
+		L"open",
+		exec,
+		args,
+		L"",
+		SW_HIDE);
+		CoUninitialize();
+}
 
 void NewTexture(LPCWSTR fname, D3DFORMAT fmt, LPDIRECT3DTEXTURE9 *tex)
 {
@@ -519,7 +606,7 @@ void initD3D(HWND hWnd)
 	d3dpp.BackBufferFormat = overridden_format;
 	d3dpp.BackBufferWidth = SCREEN_WIDTH;
 	d3dpp.BackBufferHeight = SCREEN_HEIGHT;
-	d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;//D3DPRESENT_INTERVAL_ONE
+	d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
 
 	d3d->CreateDevice(D3DADAPTER_DEFAULT,
 		overridden_devtype,
@@ -538,33 +625,83 @@ void initD3D(HWND hWnd)
 
 	d3ddev->SetRenderState(D3DRS_ZENABLE, FALSE);
 
-	//system("gx.exe data\\loading.gct tpl 0 data\\temp\\0x00000000.png");
-	
-	NewTexture(L"data\\loading.gct", D3DFMT_DXT1, &textures[0]);
+	NewTexture(L"data\\loading.gct", D3DFMT_DXT1, &textures[TEX_LOADING]);
 
 	D3DXCreateSprite(d3ddev, &sprites[0]);
 }
 
+
+
 void render_frame(void)
 {
-	d3ddev->Clear(0, NULL, D3DCLEAR_TARGET, 0, 1.0f, 0);
+	d3ddev->Clear(0, NULL, D3DCLEAR_TARGET, color, 0.0f, 0);
 
 	d3ddev->BeginScene();
 
 	switch (screen)
 	{
 	case 0:
-		sprites[0]->Begin();
-		sprites[0]->Draw(textures[TEX_LOADING], NULL, NULL, 0, 0, NULL, 0xFFFFFFFF);
-		sprites[0]->End();
+		switch (frame)
+		{
+		case 0:
+			color = 0;
+			sprites[0]->Begin();
+			sprites[0]->Draw(textures[TEX_LOADING], NULL, NULL, 0, 0, NULL, 0xFFFFFFFF);
+			sprites[0]->End();
+			break;
+		case 1:
+			init_game();
+			screen = 1;
+			subframe = 0;
+			break;
+		}
 		break;
 	case 1:
+		if (fade < 255 && subframe < 51) {
+			color = D3DCOLOR_ARGB(255, fade, fade, fade);
+			pos[TEX_ADV_SEGALOGO].x = 64.0f;
+			pos[TEX_ADV_SEGALOGO].y = -16.0f;
+			pos[TEX_ADV_PRESENTBY].x = 208.0f;
+			pos[TEX_ADV_PRESENTBY].y = 96.0f;
+			sprites[0]->Begin();
+			sprites[0]->Draw(textures[TEX_ADV_SEGALOGO], NULL, NULL, NULL, 0, &pos[TEX_ADV_SEGALOGO], color);
+			sprites[0]->Draw(textures[TEX_ADV_PRESENTBY], NULL, NULL, NULL, 0, &pos[TEX_ADV_PRESENTBY], color);
+			sprites[0]->End();
+			fade += 5;
+		}
+		else
+		{
+			color = D3DCOLOR_ARGB(255, 255, 255, 255);
+			sprites[0]->Begin();
+			sprites[0]->Draw(textures[TEX_ADV_SEGALOGO], NULL, NULL, NULL, 0, &pos[TEX_ADV_SEGALOGO], color);
+			sprites[0]->Draw(textures[TEX_ADV_PRESENTBY], NULL, NULL, NULL, 0, &pos[TEX_ADV_PRESENTBY], color);
+			sprites[0]->Draw(textures[TEX_ADV_AMUSEVIS], NULL, NULL, NULL, 0, &pos[TEX_ADV_AMUSEVIS], D3DCOLOR_ARGB(fade, 255, 255, 255));
+			sprites[0]->End();
+		}
+		if (subframe == 50)
+		{
+			fade = 0;
+		}
 		break;
 	}
 
 	d3ddev->EndScene();
 
 	d3ddev->Present(NULL, NULL, NULL, NULL);
+
+	frame += 1;
+	subframe += 1;
+}
+
+void init_game(void)
+{
+	command(L"gx.exe",L"data\\bmp\\bmp_adv.tpl tpl 2 data\\temp\\0x00000000");
+	NewTexture(L"data\\temp\\0x00000000", D3DFMT_DXT1, &textures[TEX_ADV_SEGALOGO]);
+	command(L"gx.exe", L"data\\bmp\\bmp_adv.tpl tpl 1 data\\temp\\0x00000001");
+	NewTexture(L"data\\temp\\0x00000001", D3DFMT_DXT1, &textures[TEX_ADV_PRESENTBY]);
+	command(L"gx.exe", L"data\\bmp\\bmp_adv.tpl tpl 0 data\\temp\\0x00000002");
+	NewTexture(L"data\\temp\\0x00000002", D3DFMT_DXT2, &textures[TEX_ADV_AMUSEVIS]);
+	textures[TEX_LOADING]->Release();
 }
 
 void cleanD3D(void)

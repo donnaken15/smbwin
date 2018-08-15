@@ -1,8 +1,4 @@
 ﻿  main.cpp
-main.cpp(46): warning C4005: 'TEX_ADV_LOGOE' : macro redefinition
-          main.cpp(40) : see previous definition of 'TEX_ADV_LOGOE'
-main.cpp(127): warning C4005: 'TEX_COM_FACE_GG_ANGRY' : macro redefinition
-          main.cpp(63) : see previous definition of 'TEX_COM_FACE_GG_ANGRY'
   Generating code
   Finished generating code
   game.vcxproj -> E:\Super Monkey Ball Windows\game.exe
