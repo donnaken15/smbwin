@@ -1,0 +1,14 @@
+a1
+a16b16g16r16(f)
+a2b10g10r10
+a2r10g10b10
+a2w10v10u10
+a32b32g32r32f
+a4l4
+a4r4g4b4
+a8
+a8b8g8r8
+a8l8
+a8p8
+a8r3g3b2
+a8r8g8b8

@@ -1,0 +1,574 @@
+#include <windows.h>
+#include <windowsx.h>
+#include <d3d9.h>
+#include "d3dx9.h"
+#include <iostream>
+#include <string>
+
+using namespace std;
+
+#define SCREEN_WIDTH 640
+#define SCREEN_HEIGHT 480
+
+#pragma comment (lib, "d3d9.lib")
+#pragma comment (lib, "d3dx9.lib")
+
+LPDIRECT3D9 d3d;
+LPDIRECT3DDEVICE9 d3ddev;
+
+LPDIRECT3DTEXTURE9 textures[1024];
+LPD3DXSPRITE sprites[1024];
+D3DXVECTOR2 scrVecs;
+
+#define TEX_LOADING 0
+#define TEX_ADV_AMUSEVIS 0x00001
+#define TEX_ADV_PRESENTBY 0x00002
+#define TEX_ADV_SEGALOGO 0x00003
+#define TEX_ADV_PRESSSTART 0x00004
+#define TEX_ADV_GREENBALL 0x00005
+#define TEX_ADV_THINKBBL 0x00006
+#define TEX_ADV_THINKBBLSML 0x00007
+#define TEX_ADV_CREATEDBY 0x00008
+#define TEX_ADV_BLUEBALL 0x00009 //<-- wtf
+#define TEX_ADV_LOGOA 0x0000A
+#define TEX_ADV_LOGOL 0x0000B
+#define TEX_ADV_LOGOB 0x0000C
+#define TEX_ADV_LOGOM 0x0000D
+#define TEX_ADV_LOGOO 0x0000E
+#define TEX_ADV_LOGON 0x0000F
+#define TEX_ADV_LOGOK 0x00010
+#define TEX_ADV_LOGOE 0x00011
+#define TEX_ADV_LOGOY 0x00012
+#define TEX_ADV_GRBALLSHD 0x00013
+#define TEX_ADV_LOGOS 0x00014
+#define TEX_ADV_LOGOU 0x00015
+#define TEX_ADV_LOGOP 0x00016
+#define TEX_ADV_LOGOE 0x00017
+#define TEX_ADV_LOGOR 0x00018
+#define TEX_ADV_BLBALLSHD 0x00019
+#define TEX_ADV_TRDMRK 0x00020
+#define TEX_COM_SYSFONT 0x10001
+#define TEX_COM_CURSOR 0x10002
+#define TEX_COM_CTRLS 0x10003
+#define TEX_COM_FACE_GG_IDLE 0x10004
+#define TEX_COM_FACE_GG_DNGR1 0x10005
+#define TEX_COM_SYSFONT2 0x10007
+#define TEX_COM_FACE_GG_DNGR2 0x10008
+#define TEX_COM_FACE_GG_DNGR3 0x10009
+#define TEX_COM_FACE_GG_DNGR4 0x1000A
+#define TEX_COM_FACE_GG_DNGR5 0x1000B
+#define TEX_COM_FACE_GG_WAIT5 0x1000C
+#define TEX_COM_BANANA_2D 0x1000D
+#define TEX_COM_COPYRIGHT 0x1000E
+#define TEX_COM_FACE_GG_ANGRY 0x1000D
+#define TEX_COM_FACE_AA_IDLE 0x1000E 
+#define TEX_COM_FACE_AA_DNGR1 0x1000F
+#define TEX_COM_FACE_AA_DNGR2 0x10010
+#define TEX_COM_FACE_AA_DNGR3 0x10011
+#define TEX_COM_FACE_AA_SAFE1 0x10012
+#define TEX_COM_FACE_AA_SAFE2 0x10013
+#define TEX_COM_FACE_AA_SAFE3 0x10014
+#define TEX_COM_FACE_AA_WAIT5 0x10015
+#define TEX_COM_FACE_AA_ANGRY 0x10016
+#define TEX_COM_FACE_AA_BLINK1 0x10017
+#define TEX_COM_FACE_AA_BLINK2 0x10018
+#define TEX_COM_FACE_AA_WAIT1 0x10019
+#define TEX_COM_FACE_AA_WAIT2 0x1001A
+#define TEX_COM_FACE_AA_WAIT3 0x1001B
+#define TEX_COM_FACE_AA_WAIT4 0x1001C
+#define TEX_COM_RING_ORANGE 0x1001D
+#define TEX_COM_TEST_MODE_FNT 0x1001E
+#define TEX_COM_FACE_MM_IDLE 0x1001F
+#define TEX_COM_FACE_MM_DNGR1 0x10020
+#define TEX_COM_FACE_MM_DNGR2 0x10021
+#define TEX_COM_FACE_MM_DNGR3 0x10022
+#define TEX_COM_FACE_MM_DNGR4 0x10023
+#define TEX_COM_FACE_MM_WAIT5 0x10024
+#define TEX_COM_FACE_MM_ANGRY 0x10025
+#define TEX_COM_FACE_MM_ANGRY2 0x10026
+#define TEX_COM_FACE_MM_BLINK1 0x10027
+#define TEX_COM_FACE_MM_BLINK2 0x10028
+#define TEX_COM_FACE_MM_WAIT1 0x10029
+#define TEX_COM_FACE_MM_WAIT2 0x1002A
+#define TEX_COM_FACE_MM_WAIT3 0x1002B
+#define TEX_COM_FACE_MM_WAIT4 0x1002C
+#define TEX_COM_FACE_MM_WIN1 0x1002D
+#define TEX_COM_FACE_MM_WIN2 0x1002E
+#define TEX_COM_FACE_MM_WIN3 0x1002F
+#define TEX_COM_FACE_MM_WIN4 0x10030
+#define TEX_COM_RING_PURPLE 0x10031
+#define TEX_COM_FACE_BB_IDLE 0x10032
+#define TEX_COM_FACE_BB_DNGR1 0x10033
+#define TEX_COM_FACE_BB_DNGR2 0x10034
+#define TEX_COM_FACE_BB_DNGR3 0x10035
+#define TEX_COM_FACE_BB_DNGR4 0x10036
+#define TEX_COM_FACE_BB_WAIT5 0x10037
+#define TEX_COM_FACE_BB_ANGRY 0x10038
+#define TEX_COM_FACE_BB_ANGRY2 0x10039
+#define TEX_COM_FACE_BB_BLINK1 0x1003A
+#define TEX_COM_FACE_BB_BLINK2 0x1003B
+#define TEX_COM_FACE_BB_WAIT1 0x1003C
+#define TEX_COM_FACE_BB_WAIT2 0x1003D
+#define TEX_COM_FACE_BB_WAIT3 0x1003E
+#define TEX_COM_FACE_BB_WAIT4 0x1003F
+#define TEX_COM_FACE_BB_WIN1 0x10040
+#define TEX_COM_FACE_BB_WIN2 0x10041
+#define TEX_COM_RING_BLUE 0x10042
+#define TEX_COM_UNIT_KILO 0x10043
+#define TEX_COM_PANEL_13_4 0x10044
+#define TEX_COM_FACE_AA_WIN1 0x10045
+#define TEX_COM_FACE_AA_WIN2 0x10046
+#define TEX_COM_FACE_AA_WIN3 0x10047
+#define TEX_COM_FACE_AA_WIN4 0x10048
+#define TEX_COM_DEMO_DIALOG_SPIKE 0x10049
+#define TEX_COM_DEMO_DIALOG 0x1004A
+#define TEX_COM_8PX_WHITE 0x1004B
+#define TEX_COM_UNKNOWN1 0x1004C
+#define TEX_COM_FACE_GG_ANGRY 0x1004D
+#define TEX_COM_FACE_GG_BLINK1 0x1004E
+#define TEX_COM_FACE_GG_BLINK2 0x1004F
+#define TEX_COM_HUD_FNT 0x10050
+#define TEX_COM_FACE_GG_WAIT1 0x10051
+#define TEX_COM_SEGA_AV_LOGO 0x10052
+#define TEX_COM_FACE_GG_WAIT2 0x10053
+#define TEX_COM_FACE_GG_WAIT3 0x10054
+#define TEX_COM_BANANA_10_2D 0x10055
+#define TEX_COM_FACE_GG_WAIT4 0x10056
+#define TEX_COM_FACE_GG_WIN1 0x1002D
+#define TEX_COM_UNIT_MPH 0x1002E
+#define TEX_COM_PANEL_26_11 0x1002F
+#define TEX_COM_DIALOG_JPEN_FNT 0x10030
+#define TEX_COM_FACE_GG_WIN2 0x1002E
+#define TEX_COM_FACE_GG_WIN3 0x1002F
+#define TEX_COM_FACE_GG_WIN4 0x10030
+#define TEX_COM_RING_PINK 0x10031
+#define TEX_COM_PANEL_2_1 0x10032
+#define TEX_END_SEGA 0x20001
+#define TEX_END_AVCOOP 0x20002
+#define TEX_END_AV 0x20003
+#define TEX_END_TMUSIC 0x20006
+#define TEX_END_DOLE 0x20007
+#define TEX_HOW_PANEL_52_7 0x30001
+#define TEX_HOW_CIRCLRECT 0x30002
+#define TEX_HOW_CIRCLE 0x30003
+#define TEX_HOW_FGT_ITM_BIG 0x30004
+#define TEX_HOW_FGT_BOX 0x30005
+#define TEX_HOW_FGT_ITM_LNG 0x30006
+#define TEX_HOW_FGT_ITM_VTX 0x30007
+#define TEX_HOW_RAC_ITM_BNP 0x30008
+#define TEX_HOW_RAC_ITM_BMB 0x30009
+#define TEX_HOW_RAC_BOX 0x3000A
+#define TEX_HOW_RAC_ITM_ICE 0x3000B
+#define TEX_HOW_RAC_ITM_HXG 0x3000C
+#define TEX_HOW_RAC_ITM_SPD 0x3000D
+#define TEX_HOW_TGT_SCRSH_BOMB 0x3000E
+#define TEX_HOW_TGT_BOMB 0x3000F
+#define TEX_HOW_TGT_2X 0x30010
+#define TEX_HOW_TGT_BRAKE2 0x30011
+#define TEX_HOW_TGT_SCRSH_FOG 0x30012
+#define TEX_HOW_TGT_FOG 0x30013
+#define TEX_HOW_TGT_BLANK 0x30014
+#define TEX_HOW_TGT_BRAKE 0x30015
+#define TEX_HOW_TGT_SCRSH_SPIKE 0x30016
+#define TEX_HOW_TGT_SPIKE 0x30017
+#define TEX_HOW_TGT_3X 0x30018
+#define TEX_HOW_TGT_NOWIND 0x30019
+#define TEX_HOW_BOX_GREEN_LINES 0x3002A
+#define TEX_HOW_BOX_RED_LINES 0x3002B
+#define TEX_HOW_BOX_GREEN 0x3002C
+#define TEX_HOW_BOX_GRAY 0x3002D
+#define TEX_HOW_BOX_ORANGE 0x3002E
+#define TEX_HOW_BOX_RED 0x3002F
+#define TEX_HOW_BOX_BLUE_LINES 0x30030
+#define TEX_HOW_BOX_GREEN_LINES2 0x30031
+#define TEX_HOW_BOX_BLUE_LINES2 0x30032
+#define TEX_HOW_BOX_BLUE2 0x30033
+#define TEX_HOW_BOX_GREEN2 0x30034
+#define TEX_HOW_BOX_GRAY2 0x30035
+#define TEX_HOW_BOX_ORANGE2 0x30036
+#define TEX_HOW_BOX_RED2 0x30037
+#define TEX_HOW_BOX_SANNKAKU_L 0x30038
+#define TEX_HOW_BOX_GCN_CTRL 0x30039
+#define TEX_HOW_BOX_BLUE 0x3003A
+#define TEX_HOW_SANNKAKU_U 0x3003B
+#define TEX_HOW_8PX_WHITE 0x3003C
+#define TEX_NML_TIMER 0x3003D
+#define TEX_NML_DIFF_ICON 0x3003E
+#define TEX_NML_1ST2ND3RD 0x3003F
+#define TEX_NML_RESULT 0x30040
+#define TEX_NML_GOAL 0x30041
+#define TEX_NML_NUM 0x30042
+#define TEX_NML_FNT1 0x30043
+#define TEX_NML_FNT2 0x30044
+#define TEX_NML_FNT3 0x30045
+#define TEX_NML_FNT4 0x30046
+#define TEX_NML_BBL 0x30047
+#define TEX_NML_PLRDISP 0x30048
+#define TEX_NML_TIMER_NUM_BIG 0x30049
+#define TEX_NML_TIMER_NUM_SML 0x3004A
+#define TEX_NML_TIMER_CRACK 0x3004D
+#define TEX_NML_TIMER_PIECE1 0x3004E
+#define TEX_NML_TIMER_PIECE2 0x3004F
+#define TEX_NML_TIMER_PIECE3 0x30050
+#define TEX_NML_TIMER_PIECE4 0x30051
+#define TEX_NML_TIMER_PIECE5 0x30052
+#define TEX_NML_TIMER_PIECE6 0x30053
+#define TEX_NML_TIMER_PIECE7 0x30054
+#define TEX_NML_TIMER_PIECE8 0x30055
+#define TEX_NML_TIMER_PIECE9 0x30056
+#define TEX_NML_TIMER_PIECE10 0x30057
+#define TEX_RNK_DGT 0x30058
+#define TEX_RNK_FNT 0x30058
+#define TEX_RNK_A 0x30058
+#define TEX_RNK_G 0x30058
+#define TEX_RNK_I 0x30058
+#define TEX_RNK_K 0x30058
+#define TEX_RNK_N 0x30058
+#define TEX_RNK_R 0x30058
+#define TEX_RNK_TITLE 0x30058
+#define TEX_RNK_BEST_MST 0x30058
+#define TEX_RNK_BEST_EXT 0x30058
+#define TEX_RNK_CIRCLE 0x30058
+#define TEX_RNK_SMBLOGO 0x30058
+#define TEX_RNK_BLUE 0x30058
+#define TEX_RNK_GREEN 0x30058
+#define TEX_RNK_RED 0x30058
+#define TEX_RNK_ORANGE 0x30058
+#define TEX_RNK_MODES 0x30058
+#define TEX_RNK_12345TH 0x30058
+#define TEX_RNK_DLG_FNT 0x30058
+#define TEX_RNK_UNKNOWN1 0x30058
+#define TEX_RNK_BG_MAIN 0x30058
+#define TEX_RNK_8PX_WHITE 0x30058
+#define TEX_RNK_BESTLAP 0x30058
+#define TEX_RNK_STAR 0x30058
+#define TEX_RNK_PANEL_26_3 0x30058
+#define TEX_RNK_PANEL_61_6 0x30058
+#define TEX_RNK_REDCIRCL 0x30058
+#define TEX_RNK_R_CIRCL 0x30058
+#define TEX_RNK_T_CIRCL 0x30058
+#define TEX_RNK_RAC_DGT 0x30058
+
+int overridden_version = 0;
+
+double pi = 3.1415926535897932384626433832795028841971693993751058209749445923;
+
+_D3DFORMAT overridden_format = D3DFMT_X8R8G8B8;
+
+_D3DDEVTYPE overridden_devtype = D3DDEVTYPE_HAL;
+
+D3DSWAPEFFECT overridden_swapfx = D3DSWAPEFFECT_DISCARD;
+
+void initD3D(HWND hWnd);
+void render_frame(void);
+void cleanD3D(void);
+
+void NewTexture(LPCWSTR fname, D3DFORMAT fmt, LPDIRECT3DTEXTURE9 *tex)
+{
+	D3DXCreateTextureFromFileEx(d3ddev, fname, D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2,
+		D3DX_DEFAULT, 0, fmt, D3DPOOL_DEFAULT, D3DX_DEFAULT,
+		D3DX_DEFAULT, 0, NULL, NULL, tex);
+}
+
+struct CUSTOMVERTEX { FLOAT X, Y, Z, RHW; DWORD COLOR; };
+#define CUSTOMFVF (D3DFVF_XYZRHW | D3DFVF_DIFFUSE)
+
+byte screen = 0;
+
+string englishText[] = {
+	""
+};
+
+byte introLevels[] = {
+	0x63, 0x47, 0x3D, 0x65, 0x0D, 0x09, 0x15, 0x5F
+};
+
+byte levelThemes[200] = {
+0x0D,0x0D,0x0D,0x0D,0x10,0x10,0x10,0x10,0x10,0x01,
+0x0D,0x0D,0x0D,0x0D,0x10,0x10,0x10,0x10,0x01,0x01,
+0x0F,0x0F,0x0F,0x0F,0x0F,0x0F,0x0F,0x0F,0x0F,0x01,
+0x0E,0x0E,0x0E,0x0E,0x0E,0x0E,0x0E,0x0E,0x0E,0x0E,
+0x0D,0x0D,0x0D,0x0D,0x0F,0x0F,0x0F,0x0F,0x01,0x01,
+0x0E,0x0E,0x0E,0x0E,0x0E,0x0E,0x0E,0x0E,0x0E,0x01,
+0x12,0x12,0x12,0x12,0x12,0x12,0x12,0x12,0x12,0x01,
+0x13,0x13,0x13,0x13,0x13,0x13,0x13,0x13,0x13,0x01,
+0x14,0x14,0x14,0x14,0x14,0x14,0x14,0x14,0x14,0x14,
+0x15,0x15,0x15,0x15,0x15,0x01,0x01,0x01,0x0D,0x01,
+0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,0x11,
+0x11,0x11,0x11,0x01,0x1A,0x1A,0x1A,0x1A,0x1A,0x1A,
+0x1A,0x1A,0x1A,0x1A,0x1A,0x1A,0x1A,0x1A,0x1A,0x1A,
+0x11,0x12,0x0D,0x13,0x0F,0x0E,0x0F,0x12,0x10,0x11,
+0x11,0x0E,0x0D,0x13,0x11,0x11,0x11,0x11,0x11,0x0D,
+0x16,0x16,0x16,0x16,0x16,0x16,0x16,0x16,0x16,0x16,
+0x0D,0x0D,0x0D,0x0D,0x0D,0x0D,0x0D,0x0D,0x0D,0x0D,
+0x0D,0x0D,0x0D,0x0D,0x0D,0x0D,0x0D,0x0D,0x19,0x17,
+0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x00,
+0x01,0x01,0x01,0x01,0x01,0x01,0x15,0x1B,0x0D,0x01 };
+
+LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+int WINAPI WinMain(HINSTANCE hInstance,
+	HINSTANCE hPrevInstance,
+	LPSTR lpCmdLine,
+	int nCmdShow)
+{
+	
+
+	HWND hWnd;
+	WNDCLASSEX wc;
+
+	ZeroMemory(&wc, sizeof(WNDCLASSEX));
+
+	wc.cbSize = sizeof(WNDCLASSEX);
+	wc.style = CS_HREDRAW | CS_VREDRAW;
+	wc.lpfnWndProc = WindowProc;
+	wc.hInstance = hInstance;
+	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wc.lpszClassName = L"GMBJ8P";
+
+	ShowCursor(false);
+
+	RegisterClassEx(&wc);
+
+	hWnd = CreateWindowEx(NULL,
+		L"GMBJ8P",
+		L"Super Monkey Ball",
+		WS_OVERLAPPED | WS_SYSMENU | WS_MINIMIZEBOX,
+		GetSystemMetrics(SM_CXSCREEN) / 2 - SCREEN_WIDTH / 2,
+		GetSystemMetrics(SM_CYSCREEN) / 2 - SCREEN_HEIGHT / 2,
+		SCREEN_WIDTH+6, SCREEN_HEIGHT+34,
+		NULL,
+		NULL,
+		hInstance,
+		NULL);
+
+	ShowWindow(hWnd, nCmdShow);
+
+	initD3D(hWnd);
+
+	MSG msg;
+
+	while (TRUE)
+	{
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+
+		if (msg.message == WM_QUIT)
+			break;
+
+		render_frame();
+	}
+
+	cleanD3D();
+
+	return msg.wParam;
+}
+
+LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	switch (message)
+	{
+	case WM_DESTROY:
+	{
+		PostQuitMessage(0);
+		cleanD3D();
+		exit(0);
+		return 0;
+	} break;
+	}
+
+	return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+void initD3D(HWND hWnd)
+{
+	int argc;
+
+	LPWSTR *argv = CommandLineToArgvW(GetCommandLine(), &argc);
+
+	try
+	{
+		if (argv[1][0] == *"-" && argv[1][1] == *"d" && argv[1][2] == *"3" && argv[1][3] == *"d" && argv[1][4] == *":")
+		{
+			if (argv[1][5] == *"9" && argv[1][6] == *"b")
+			{
+				overridden_version = D3D9b_SDK_VERSION;
+				if (argv[1][7] == *",")
+				{
+					if (argv[1][8] == *"a")
+					{
+						if (argv[1][9] == *"1")
+						{
+							overridden_format = D3DFMT_A1;
+							if (argv[1][10] == *"6" && argv[1][11] == *"b" && argv[1][12] == *"1" && argv[1][13] == *"6" && argv[1][14] == *"g" && argv[1][15] == *"1" && argv[1][16] == *"6" && argv[1][17] == *"r" && argv[1][18] == *"1" && argv[1][19] == *"6")
+							{
+								overridden_format = D3DFMT_A16B16G16R16;
+								if (argv[1][20] == *"f")
+								{
+									overridden_format = D3DFMT_A16B16G16R16F;
+									if (argv[1][21] == *"a")
+									{
+										overridden_format = D3DFMT_BINARYBUFFER;
+									}
+								}
+							}
+						}
+						if (argv[1][9] == *"2")
+						{
+							if ((argv[1][11] == *"1" && argv[1][12] == *"0" && argv[1][14] == *"1" && argv[1][15] == *"0" && argv[1][17] == *"1" && argv[1][18] == *"0"))
+							{
+								if (argv[1][10] == *"b" &&argv[1][13] == *"g" && argv[1][16] == *"r")
+								{
+									overridden_format = D3DFMT_A2B10G10R10;
+								}
+								if (argv[1][10] == *"r" &&argv[1][13] == *"g" && argv[1][16] == *"b")
+								{
+									overridden_format = D3DFMT_A2R10G10B10;
+								}
+								if (argv[1][10] == *"w" &&argv[1][13] == *"v" && argv[1][16] == *"u")
+								{
+									overridden_format = D3DFMT_A2W10V10U10;
+								}
+							}
+						}
+						if (argv[1][9] == *"3" && argv[1][10] == *"2" && argv[1][11] == *"b" && argv[1][12] == *"3" && argv[1][13] == *"2" && argv[1][14] == *"g" && argv[1][15] == *"3" && argv[1][16] == *"2" && argv[1][17] == *"r" && argv[1][18] == *"3" && argv[1][19] == *"2" && argv[1][20] == *"f")
+						{
+							overridden_format = D3DFMT_A32B32G32R32F;
+						}
+						if (argv[1][9] == *"4" || argv[1][11] == *"8")
+						{
+							overridden_format = D3DFMT_A4L4;
+							if (argv[1][11] == *"4" || argv[1][11] == *"8")
+							{
+								if (argv[1][10] == *"l" && argv[1][11] == *"4")
+								{
+									overridden_format = D3DFMT_A4L4;
+								}
+								if (argv[1][11] == *"8")
+								{
+									if (argv[1][10] == *"l")
+									{
+										overridden_format = D3DFMT_A8L8;
+									}
+									if (argv[1][10] == *"p")
+									{
+										overridden_format = D3DFMT_A8P8;
+									}
+								}
+								if (argv[1][10] == *"r" && argv[1][11] == *"4" && argv[1][12] == *"g" && argv[1][13] == *"4" && argv[1][14] == *"b" && argv[1][15] == *"4")
+								{
+									overridden_format = D3DFMT_A4R4G4B4;
+								}
+							}
+							if (argv[1][9] == *"8")
+							{
+								overridden_format = D3DFMT_A8;
+								if (argv[1][10] == *"b" && argv[1][11] == *"8" && argv[1][12] == *"g" && argv[1][13] == *"8" && argv[1][14] == *"r" && argv[1][15] == *"8")
+								{
+									overridden_format = D3DFMT_A8B8G8R8;
+								}
+								if (argv[1][10] == *"r" && argv[1][11] == *"3" && argv[1][12] == *"g" && argv[1][13] == *"3" && argv[1][14] == *"b" && argv[1][15] == *"2")
+								{
+									overridden_format = D3DFMT_A8R3G3B2;
+								}
+								if (argv[1][10] == *"r" && argv[1][11] == *"8" && argv[1][12] == *"g" && argv[1][13] == *"8" && argv[1][14] == *"b" && argv[1][15] == *"8")
+								{
+									overridden_format = D3DFMT_A8R8G8B8;
+								}
+							}
+						}
+					}
+					if (argv[1][8] == *"b" && argv[1][9] == *"i" && argv[1][10] == *"n" && argv[1][11] == *"a" && argv[1][12] == *"r" && argv[1][13] == *"y" && argv[1][14] == *"b" && argv[1][15] == *"u" && argv[1][16] == *"f" && argv[1][17] == *"f" && argv[1][18] == *"e" && argv[1][19] == *"r")
+					{
+						overridden_format = D3DFMT_BINARYBUFFER;
+					}
+				}
+			}
+			else if (argv[1][5] == *"x")
+			{
+				overridden_version = D3DX_VERSION;
+			}
+			else if (argv[1][5] == *"s" && argv[1][6] == *"d" && argv[1][7] == *"k")
+			{
+				overridden_version = D3D_SDK_VERSION;
+			}
+			else if (argv[1][5] == *"d" && argv[1][6] == *"e" && argv[1][7] == *"f")
+			{
+				overridden_version = DIRECT3D_VERSION;
+			}
+		}
+	}
+	catch (exception ex) {
+		overridden_version = D3D_SDK_VERSION;
+		overridden_format = D3DFMT_X8R8G8B8;
+		overridden_devtype = D3DDEVTYPE_HAL;
+		overridden_swapfx = D3DSWAPEFFECT_DISCARD;
+	};
+
+	d3d = Direct3DCreate9(overridden_version);
+
+	D3DPRESENT_PARAMETERS d3dpp;
+
+	ZeroMemory(&d3dpp, sizeof(d3dpp));
+	d3dpp.Windowed = TRUE;
+	d3dpp.SwapEffect = overridden_swapfx;
+	d3dpp.hDeviceWindow = hWnd;
+	d3dpp.BackBufferFormat = overridden_format;
+	d3dpp.BackBufferWidth = SCREEN_WIDTH;
+	d3dpp.BackBufferHeight = SCREEN_HEIGHT;
+	d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;//D3DPRESENT_INTERVAL_ONE
+
+	d3d->CreateDevice(D3DADAPTER_DEFAULT,
+		overridden_devtype,
+		hWnd,
+		D3DCREATE_SOFTWARE_VERTEXPROCESSING,
+		&d3dpp,
+		&d3ddev);
+
+	d3ddev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+
+	d3ddev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+
+	d3ddev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+
+	d3ddev->SetRenderState(D3DRS_LIGHTING, FALSE);
+
+	d3ddev->SetRenderState(D3DRS_ZENABLE, FALSE);
+
+	//system("gx.exe data\\loading.gct tpl 0 data\\temp\\0x00000000.png");
+	
+	NewTexture(L"data\\loading.gct", D3DFMT_DXT1, &textures[0]);
+
+	D3DXCreateSprite(d3ddev, &sprites[0]);
+}
+
+void render_frame(void)
+{
+	d3ddev->Clear(0, NULL, D3DCLEAR_TARGET, 0, 1.0f, 0);
+
+	d3ddev->BeginScene();
+
+	switch (screen)
+	{
+	case 0:
+		sprites[0]->Begin();
+		sprites[0]->Draw(textures[TEX_LOADING], NULL, NULL, 0, 0, NULL, 0xFFFFFFFF);
+		sprites[0]->End();
+		break;
+	case 1:
+		break;
+	}
+
+	d3ddev->EndScene();
+
+	d3ddev->Present(NULL, NULL, NULL, NULL);
+}
+
+void cleanD3D(void)
+{
+	d3ddev->Release();
+	d3d->Release();
+}
