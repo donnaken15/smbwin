@@ -1,3 +1,4 @@
+#pragma region INITIALIZATION
 #include <windows.h>
 #include <windowsx.h>
 #include <d3d9.h>
@@ -13,17 +14,30 @@ using namespace std;
 #pragma comment (lib, "d3d9.lib")
 #pragma comment (lib, "d3dx9.lib")
 
-uintptr_t frame,subframe;
+#pragma region CTRLLER
+struct ctrl {
+	double ctrlstick[4];
+	double camstick[4];
+	byte dpad;
+	bool buttons[8]; // 0=A,1=B,2=Start,3=X,4=Y,5=Z,6=L,7=R
+};
+#pragma endregion
 
+#pragma region OBJECTS
 LPDIRECT3D9 d3d;
 LPDIRECT3DDEVICE9 d3ddev;
+LPDIRECT3DTEXTURE9 textures[1048576];
+LPD3DXSPRITE sprites[1048576];
+RECT rects[1048576];
+LPRECT lprects[1048576];
+D3DXVECTOR2 pos[1048576];
+LPDIRECTXFILE objects[1048576];
+LPD3DXFONT fonts[1048576];
+RAWINPUT* rawinput[4];
+HFONT hfonts[1048576];
+#pragma endregion
 
-LPDIRECT3DTEXTURE9 textures[1024];
-LPD3DXSPRITE sprites[1024];
-RECT rects[1024];
-D3DXVECTOR2 pos[1024];
-int color;
-
+#pragma region DEFINES
 #define TEX_LOADING 0
 #define TEX_ADV_AMUSEVIS 0x00001
 #define TEX_ADV_PRESENTBY 0x00002
@@ -323,7 +337,21 @@ int color;
 #define TEX_SEL_EXP_BTN 0x40040
 #define TEX_SEL_BTN_GOLF 0x40041
 
-int overridden_version = 0, fade = 0;
+#define OBJ_NULL 0
+#define OBJ_BOX 0x00001
+#define OBJ_AVBALL 0x00002
+#define OBJ_STAGE 0xFFFFF
+#pragma endregion
+
+#pragma region VARIABLES
+uintptr_t frame, subframe, score;
+
+unsigned short time = 0xE10, stage;
+
+byte $;
+
+int overridden_version = 0;
+byte fade = 0;
 
 double pi = 3.1415926535897932384626433832795028841971693993751058209749445923;
 
@@ -333,11 +361,48 @@ _D3DDEVTYPE overridden_devtype = D3DDEVTYPE_HAL;
 
 D3DSWAPEFFECT overridden_swapfx = D3DSWAPEFFECT_DISCARD;
 
+struct CUSTOMVERTEX { FLOAT X, Y, Z, RHW; DWORD COLOR; };
+#define CUSTOMFVF (D3DFVF_XYZRHW | D3DFVF_DIFFUSE)
+
+byte screen = 0;
+
+byte keys[] =
+#pragma region DEFAULT CONTROLS
+{
+	'W', //Control Stick
+	'A',
+	'S',
+	'D',
+	VK_LEFT,
+	VK_UP,
+	VK_RIGHT,
+	VK_DOWN,
+	'I', //C-Stick
+	'J',
+	'K',
+	'L',
+	VK_SPACE, //A
+	VK_LSHIFT, //B
+	VK_RETURN, //START
+	'Z', //X
+	'X', //Y
+	'C', //Z
+	'Q', //L
+	'E' //R
+};
+#pragma endregion
+
+ctrl controllers[4];
+
+signed int color;
+static bool freeze;
+
 void initD3D(HWND hWnd);
 void render_frame(void);
 void cleanD3D(void);
 void init_game(void);
 void command(LPWSTR exec, LPWSTR args);
+#pragma endregion
 
 void command(LPWSTR exec, LPWSTR args) {
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
@@ -357,20 +422,202 @@ void NewTexture(LPCWSTR fname, D3DFORMAT fmt, LPDIRECT3DTEXTURE9 *tex)
 		D3DX_DEFAULT, 0, NULL, NULL, tex);
 }
 
-struct CUSTOMVERTEX { FLOAT X, Y, Z, RHW; DWORD COLOR; };
-#define CUSTOMFVF (D3DFVF_XYZRHW | D3DFVF_DIFFUSE)
+#pragma region CHALLENGE MODE THINGS
+struct challengeModeStage {
+	unsigned short id;
+	int modifiers; // NULL / 0 = No changes, 1 = Final stage, 2 = Custom time
+	short time;
+};
 
-byte screen = 0;
+byte challengeModeCreateStage(challengeModeStage stg)
+{
+	byte newstage[] = {
+		0x02,0x0,0x0,0x0,0x0,stg.id
+	};
+	return (byte)newstage;
+}
+
+byte challengeModeEndStgList[] = {
+	0x03,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+};
+
+// BEGINNER STAGES
+
+challengeModeStage b01 = { 1 };
+challengeModeStage b02 = { 2 };
+challengeModeStage b03 = { 3 };
+challengeModeStage b04 = { 4 };
+challengeModeStage b05 = { 91 };
+challengeModeStage b06 = { 5 };
+challengeModeStage b07 = { 6 };
+challengeModeStage b08 = { 7 };
+challengeModeStage b09 = { 8 };
+challengeModeStage b10 = { 9 };
+
+// ADVANCED STAGES
+
+challengeModeStage a01 = { 11 };
+challengeModeStage a02 = { 12 };
+challengeModeStage a03 = { 13 };
+challengeModeStage a04 = { 14 };
+challengeModeStage a05 = { 91, 2, 1800 };
+challengeModeStage a06 = { 15 };
+challengeModeStage a07 = { 16 };
+challengeModeStage a08 = { 17, 2, 1800 };
+challengeModeStage a09 = { 18 };
+challengeModeStage a10 = { 92, 2, 1800 };
+challengeModeStage a11 = { 21, 2, 1800 };
+challengeModeStage a12 = { 22, 2, 1800 };
+challengeModeStage a13 = { 23, 2, 1800 };
+challengeModeStage a14 = { 24 };
+challengeModeStage a15 = { 25 };
+challengeModeStage a16 = { 26, 2, 1800 };
+challengeModeStage a17 = { 27 };
+challengeModeStage a18 = { 28 };
+challengeModeStage a19 = { 29 };
+challengeModeStage a20 = { 93 };
+challengeModeStage a21 = { 31 };
+challengeModeStage a22 = { 32 };
+challengeModeStage a23 = { 33 };
+challengeModeStage a24 = { 34 };
+challengeModeStage a25 = { 35 };
+challengeModeStage a26 = { 36 };
+challengeModeStage a27 = { 37 };
+challengeModeStage a28 = { 38 };
+challengeModeStage a29 = { 39 };
+challengeModeStage a30 = { 40 };
+
+// EXPERT STAGES
+
+challengeModeStage e01 = { 41 };
+challengeModeStage e02 = { 42 };
+challengeModeStage e03 = { 43 };
+challengeModeStage e04 = { 44 };
+challengeModeStage e05 = { 91 };
+challengeModeStage e06 = { 45 };
+challengeModeStage e07 = { 46 };
+challengeModeStage e08 = { 47 };
+challengeModeStage e09 = { 48 };
+challengeModeStage e10 = { 92 };
+challengeModeStage e11 = { 51 };
+challengeModeStage e12 = { 52 };
+challengeModeStage e13 = { 53 };
+challengeModeStage e14 = { 54 };
+challengeModeStage e15 = { 55 };
+challengeModeStage e16 = { 56 };
+challengeModeStage e17 = { 57 };
+challengeModeStage e18 = { 58 };
+challengeModeStage e19 = { 59 };
+challengeModeStage e20 = { 93 };
+challengeModeStage e21 = { 61 };
+challengeModeStage e22 = { 62 };
+challengeModeStage e23 = { 63 };
+challengeModeStage e24 = { 64 };
+challengeModeStage e25 = { 65 };
+challengeModeStage e26 = { 66 };
+challengeModeStage e27 = { 67 };
+challengeModeStage e28 = { 68 };
+challengeModeStage e29 = { 69 };
+challengeModeStage e30 = { 94 };
+challengeModeStage e31 = { 71 };
+challengeModeStage e32 = { 72 };
+challengeModeStage e33 = { 73 };
+challengeModeStage e34 = { 74 };
+challengeModeStage e35 = { 75 };
+challengeModeStage e36 = { 76 };
+challengeModeStage e37 = { 77 };
+challengeModeStage e38 = { 78 };
+challengeModeStage e39 = { 79 };
+challengeModeStage e40 = { 95 };
+challengeModeStage e41 = { 81 };
+challengeModeStage e42 = { 82 };
+challengeModeStage e43 = { 83 };
+challengeModeStage e44 = { 84 };
+challengeModeStage e45 = { 85 };
+challengeModeStage e46 = { 86 };
+challengeModeStage e47 = { 87 };
+challengeModeStage e48 = { 88 };
+challengeModeStage e49 = { 89 };
+challengeModeStage e50 = { 90 };
+
+// BEGINNER EXPERT STAGES
+
+challengeModeStage bx01 = { 101 };
+challengeModeStage bx02 = { 102 };
+challengeModeStage bx03 = { 103 };
+
+// ADVANCED EXPERT STAGES
+
+challengeModeStage ax01 = { 101 };
+challengeModeStage ax02 = { 104 };
+challengeModeStage ax03 = { 103 };
+
+byte challenge[] = {
+	0
+};
+#pragma endregion
+
+string debugBoxText[] = {
+	"GAME START",
+	"STAGE SELECT",
+	"MINI MODE",
+	"OPTION",
+	"TEST MODE"
+};
 
 string englishText[] = {
 	""
+};
+
+string floorText[] = {
+	"saru mark.pic"
+	"[Lib No.%d]",
+	"FINAL FLOOR",
+	"BONUS FLOOR",
+	"FLOOR %d",
+	"EXTRA %d",
+	"MASTER %d",
+	"ROUND %d"
+};
+
+string pressStartText[] = {
+	"Options",
+	"p/SANNKAKU_R/ a/Options p/SANNKAKU_L/",
+	"Game Start",
+	"p/SANNKAKU_R/ a/Game Start p/SANNKAKU_L/",
+	""
+};
+
+string bananaStr[] = {
+	"banana.pic",
+	"BANANA(S)"
+	"%2d BANANA%s LEFT",
+
+};
+
+string eventText[] = {
+	"JUMP TO FLOOR %d",
+	"FALL OUT",
+	"TIME OVER",
+	"BONUS FINISH",
+	"h/NOKORI",
+	"a/Continue(s):%d",
+	"HURRY UP!"
+};
+
+string legalText[] = {
+	"spr_banana_work",
+	"AMUSEMENT VISION, LTD./SEGA,2001",
+	"spr_c_work",
+	"spr_logo2_work",
+	"MONKEY BALL"
 };
 
 byte introLevels[] = {
 	0x63, 0x47, 0x3D, 0x65, 0x0D, 0x09, 0x15, 0x5F
 };
 
-byte levelThemes[200] = {
+byte levelThemes[201] = { 0x01,
 0x0D,0x0D,0x0D,0x0D,0x10,0x10,0x10,0x10,0x10,0x01,
 0x0D,0x0D,0x0D,0x0D,0x10,0x10,0x10,0x10,0x01,0x01,
 0x0F,0x0F,0x0F,0x0F,0x0F,0x0F,0x0F,0x0F,0x0F,0x01,
@@ -391,6 +638,7 @@ byte levelThemes[200] = {
 0x0D,0x0D,0x0D,0x0D,0x0D,0x0D,0x0D,0x0D,0x19,0x17,
 0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x00,
 0x01,0x01,0x01,0x01,0x01,0x01,0x15,0x1B,0x0D,0x01 };
+#pragma endregion
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -399,8 +647,6 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	LPSTR lpCmdLine,
 	int nCmdShow)
 {
-	
-
 	HWND hWnd;
 	WNDCLASSEX wc;
 
@@ -465,6 +711,9 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		exit(0);
 		return 0;
 	} break;
+	case WM_KEYDOWN:
+
+		break;
 	}
 
 	return DefWindowProc(hWnd, message, wParam, lParam);
@@ -496,10 +745,6 @@ void initD3D(HWND hWnd)
 								if (argv[1][20] == *"f")
 								{
 									overridden_format = D3DFMT_A16B16G16R16F;
-									if (argv[1][21] == *"a")
-									{
-										overridden_format = D3DFMT_BINARYBUFFER;
-									}
 								}
 							}
 						}
@@ -572,6 +817,68 @@ void initD3D(HWND hWnd)
 					{
 						overridden_format = D3DFMT_BINARYBUFFER;
 					}
+					if (argv[1][8] == *"c" && argv[1][9] == *"x" && argv[1][10] == *"v" && argv[1][11] == *"8" && argv[1][12] == *"u" && argv[1][13] == *"8")
+					{
+						overridden_format = D3DFMT_CxV8U8;
+					}
+					if (argv[1][8] == *"d")
+					{
+						if (argv[1][9] == *"1" && argv[1][10] == *"5" && argv[1][11] == *"s" && argv[1][12] == *"1")
+						{
+							overridden_format = D3DFMT_D15S1;
+						}
+						if (argv[1][9] == *"1" && argv[1][10] == *"6")
+						{
+							overridden_format = D3DFMT_D16;
+							if (argv[1][11] == *"l")
+							{
+								overridden_format = D3DFMT_D16_LOCKABLE;
+							}
+						}
+						if (argv[1][9] == *"2" && argv[1][10] == *"4")
+						{
+							if (argv[1][11] == *"f" && argv[1][12] == *"s" && argv[1][13] == *"8")
+							{
+								overridden_format = D3DFMT_D24FS8;
+							}
+							if (argv[1][11] == *"s" && argv[1][12] == *"8")
+							{
+								overridden_format = D3DFMT_D24S8;
+							}
+							if (argv[1][11] == *"x" && argv[1][12] == *"4" && argv[1][13] == *"s" && argv[1][14] == *"4")
+							{
+								overridden_format = D3DFMT_D24X4S4;
+							}
+							if (argv[1][11] == *"x" && argv[1][12] == *"8")
+							{
+								overridden_format = D3DFMT_D24X8;
+							}
+						}
+						if (argv[1][9] == *"3" && argv[1][10] == *"2")
+						{
+							overridden_format = D3DFMT_D32;
+							if (argv[1][11] == *"f" && argv[1][12] == *"l")
+							{
+								overridden_format = D3DFMT_D32F_LOCKABLE;
+							}
+							if (argv[1][11] == *"l")
+							{
+								overridden_format = D3DFMT_D32_LOCKABLE;
+							}
+						}
+						if (argv[1][9] == *"x" && argv[1][10] == *"t")
+						{
+							if (argv[1][11] = *"1") overridden_format = D3DFMT_DXT1;
+							if (argv[1][11] = *"2") overridden_format = D3DFMT_DXT2;
+							if (argv[1][11] = *"3") overridden_format = D3DFMT_DXT3;
+							if (argv[1][11] = *"4") overridden_format = D3DFMT_DXT4;
+							if (argv[1][11] = *"5") overridden_format = D3DFMT_DXT5;
+						}
+						if (argv[1][9] == *"x" && argv[1][10] == *"t")
+						{
+
+						}
+					}
 				}
 			}
 			else if (argv[1][5] == *"x")
@@ -588,6 +895,7 @@ void initD3D(HWND hWnd)
 			}
 		}
 	}
+
 	catch (exception ex) {
 		overridden_version = D3D_SDK_VERSION;
 		overridden_format = D3DFMT_X8R8G8B8;
@@ -611,7 +919,8 @@ void initD3D(HWND hWnd)
 	d3d->CreateDevice(D3DADAPTER_DEFAULT,
 		overridden_devtype,
 		hWnd,
-		D3DCREATE_SOFTWARE_VERTEXPROCESSING,
+		D3DCREATE_HARDWARE_VERTEXPROCESSING|
+		D3DCREATE_MULTITHREADED,
 		&d3dpp,
 		&d3ddev);
 
@@ -628,69 +937,138 @@ void initD3D(HWND hWnd)
 	NewTexture(L"data\\loading.gct", D3DFMT_DXT1, &textures[TEX_LOADING]);
 
 	D3DXCreateSprite(d3ddev, &sprites[0]);
+
+	hfonts[0] = CreateFontA(64,64,0,0,400,false,false,false,ANSI_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,FF_DONTCARE,"Arial Narrow");
+
+	D3DXCreateFont(d3ddev, hfonts[0], &fonts[0]);
 }
-
-
 
 void render_frame(void)
 {
-	d3ddev->Clear(0, NULL, D3DCLEAR_TARGET, color, 0.0f, 0);
 
-	d3ddev->BeginScene();
-
-	switch (screen)
+	if (!freeze)
 	{
-	case 0:
-		switch (frame)
+		d3ddev->Clear(0, NULL, D3DCLEAR_TARGET, color, 0.0f, 0);
+
+		d3ddev->BeginScene();
+
+		switch (screen)
 		{
 		case 0:
-			color = 0;
-			sprites[0]->Begin();
-			sprites[0]->Draw(textures[TEX_LOADING], NULL, NULL, 0, 0, NULL, 0xFFFFFFFF);
-			sprites[0]->End();
+			switch (frame)
+			{
+			case 0:
+				color = 0;
+				sprites[0]->Begin();
+				sprites[0]->Draw(textures[TEX_LOADING], NULL, NULL, 0, 0, NULL, 0xFFFFFFFF);
+				sprites[0]->End();
+				break;
+			case 1:
+				init_game();
+				screen = 1;
+				subframe = 0;
+				break;
+			}
 			break;
 		case 1:
-			init_game();
-			screen = 1;
-			subframe = 0;
+			if (fade < 255 && subframe < 51) {
+				color = D3DCOLOR_ARGB(255, fade, fade, fade);
+				pos[TEX_ADV_SEGALOGO].x = 64.0f;
+				pos[TEX_ADV_SEGALOGO].y = -16.0f;
+				pos[TEX_ADV_PRESENTBY].x = 208.0f;
+				pos[TEX_ADV_PRESENTBY].y = 96.0f;
+				sprites[0]->Begin();
+				sprites[0]->Draw(textures[TEX_ADV_SEGALOGO], NULL, NULL, NULL, 0, &pos[TEX_ADV_SEGALOGO], color);
+				sprites[0]->Draw(textures[TEX_ADV_PRESENTBY], NULL, NULL, NULL, 0, &pos[TEX_ADV_PRESENTBY], color);
+				sprites[0]->End();
+				fade += 5;
+			}
+			else if (subframe > 50 && subframe < 291)
+			{
+				color = D3DCOLOR_ARGB(255, 255, 255, 255);
+
+				sprites[0]->Begin();
+				sprites[0]->Draw(textures[TEX_ADV_SEGALOGO], NULL, NULL, NULL, 0, &pos[TEX_ADV_SEGALOGO], color);
+				sprites[0]->Draw(textures[TEX_ADV_PRESENTBY], NULL, NULL, NULL, 0, &pos[TEX_ADV_PRESENTBY], color);
+				sprites[0]->End();
+			}
+			else if (subframe > 290 && subframe < 340) {
+				color = D3DCOLOR_ARGB(255, fade, fade, fade);
+				sprites[0]->Begin();
+				sprites[0]->Draw(textures[TEX_ADV_SEGALOGO], NULL, NULL, NULL, 0, &pos[TEX_ADV_SEGALOGO], color);
+				sprites[0]->Draw(textures[TEX_ADV_PRESENTBY], NULL, NULL, NULL, 0, &pos[TEX_ADV_PRESENTBY], color);
+				sprites[0]->End();
+				fade -= 5;
+			}
+			if (subframe > 340 && subframe < 390) {
+				color = D3DCOLOR_ARGB(255, fade, (int)(fade / 1.328125), 0);
+				pos[TEX_ADV_CREATEDBY].x = 224.0f;
+				pos[TEX_ADV_CREATEDBY].y = 48.0f;
+				pos[TEX_ADV_AMUSEVIS].x = 192.0f;
+				pos[TEX_ADV_AMUSEVIS].y = 128.0f;
+				sprites[0]->Begin();
+				sprites[0]->Draw(textures[TEX_ADV_CREATEDBY], &rects[TEX_ADV_CREATEDBY], NULL, NULL, 0, &pos[TEX_ADV_CREATEDBY], D3DCOLOR_ARGB(255, fade, fade, fade));
+				sprites[0]->Draw(textures[TEX_ADV_AMUSEVIS], NULL, NULL, NULL, 0, &pos[TEX_ADV_AMUSEVIS], D3DCOLOR_ARGB(255, fade, fade, fade));
+				sprites[0]->End();
+				fade += 5;
+			}
+			else if (subframe > 389 && subframe < 530) {
+				sprites[0]->Begin();
+				sprites[0]->Draw(textures[TEX_ADV_CREATEDBY], &rects[TEX_ADV_CREATEDBY], NULL, NULL, 0, &pos[TEX_ADV_CREATEDBY], D3DCOLOR_ARGB(255, fade, fade, fade));
+				sprites[0]->Draw(textures[TEX_ADV_AMUSEVIS], NULL, NULL, NULL, 0, &pos[TEX_ADV_AMUSEVIS], D3DCOLOR_ARGB(255, fade, fade, fade));
+				sprites[0]->End();
+			}
+			else if (subframe > 529 && subframe < 580) {
+				color = D3DCOLOR_ARGB(255, fade, (int)(fade / 1.328125), 0);
+				sprites[0]->Begin();
+				sprites[0]->Draw(textures[TEX_ADV_CREATEDBY], &rects[TEX_ADV_CREATEDBY], NULL, NULL, 0, &pos[TEX_ADV_CREATEDBY], D3DCOLOR_ARGB(255, fade, fade, fade));
+				sprites[0]->Draw(textures[TEX_ADV_AMUSEVIS], NULL, NULL, NULL, 0, &pos[TEX_ADV_AMUSEVIS], D3DCOLOR_ARGB(255, fade, fade, fade));
+				sprites[0]->End();
+				fade -= 5;
+			}
+			else if (subframe > 579 && fade == 0 && subframe != 0)
+			{
+				command(L"gx.exe", L"data\\bmp\\bmp_nml.tpl tpl 0 data\\temp\\0x00000004");
+				NewTexture(L"data\\temp\\0x00000004", D3DFMT_DXT2, &textures[TEX_NML_TIMER]);
+				command(L"gx.exe", L"data\\bmp\\bmp_nml.tpl tpl 12 data\\temp\\0x00000005");
+				NewTexture(L"data\\temp\\0x00000005", D3DFMT_DXT2, &textures[TEX_NML_TIMER_NUM_BIG]);
+				CreateDirectory(L"data\\temp\\0x99999999", NULL);
+				command(L"gx.exe", L"data\\st001\\st001.gma gma data\\temp\\0x99999999");
+				//DirectXFileCreate(&objects[0]);
+				//NewTexture(L"data\\temp\\0x99999999", D3DFMT_DXT2, &textures[TEX_NML_TIMER_NUM_BIG]);
+				subframe = 0;
+				screen = 2;
+			}
+			break;
+		case 2:
+			pos[TEX_NML_TIMER].x = 256;
+			pos[TEX_NML_TIMER].y = 0;
+			color = 0xFFFFFFFF;
+			sprites[0]->Begin();
+			sprites[0]->Draw(textures[TEX_NML_TIMER], NULL, NULL, NULL, 0, &pos[TEX_NML_TIMER], D3DCOLOR_ARGB(255, 255, 255, 255));
+			/*switch (time)
+			{
+			case 3600:
+				sprites[0]->Draw(textures[TEX_NML_TIMER_NUM_BIG], NULL, NULL, NULL, 0, &pos[TEX_NML_TIMER], D3DCOLOR_ARGB(255, 255, 255, 255));
+				break;
+			case 1:
+				break;
+			}*/
+			fonts[0]->Begin();
+			fonts[0]->DrawTextA("Test",-1,&rects[TEX_ADV_CREATEDBY],0,D3DCOLOR_ARGB(255,255,0,0));
+			fonts[0]->End();
+			sprites[0]->End();
+			time -= 1;
 			break;
 		}
-		break;
-	case 1:
-		if (fade < 255 && subframe < 51) {
-			color = D3DCOLOR_ARGB(255, fade, fade, fade);
-			pos[TEX_ADV_SEGALOGO].x = 64.0f;
-			pos[TEX_ADV_SEGALOGO].y = -16.0f;
-			pos[TEX_ADV_PRESENTBY].x = 208.0f;
-			pos[TEX_ADV_PRESENTBY].y = 96.0f;
-			sprites[0]->Begin();
-			sprites[0]->Draw(textures[TEX_ADV_SEGALOGO], NULL, NULL, NULL, 0, &pos[TEX_ADV_SEGALOGO], color);
-			sprites[0]->Draw(textures[TEX_ADV_PRESENTBY], NULL, NULL, NULL, 0, &pos[TEX_ADV_PRESENTBY], color);
-			sprites[0]->End();
-			fade += 5;
-		}
-		else
-		{
-			color = D3DCOLOR_ARGB(255, 255, 255, 255);
-			sprites[0]->Begin();
-			sprites[0]->Draw(textures[TEX_ADV_SEGALOGO], NULL, NULL, NULL, 0, &pos[TEX_ADV_SEGALOGO], color);
-			sprites[0]->Draw(textures[TEX_ADV_PRESENTBY], NULL, NULL, NULL, 0, &pos[TEX_ADV_PRESENTBY], color);
-			sprites[0]->Draw(textures[TEX_ADV_AMUSEVIS], NULL, NULL, NULL, 0, &pos[TEX_ADV_AMUSEVIS], D3DCOLOR_ARGB(fade, 255, 255, 255));
-			sprites[0]->End();
-		}
-		if (subframe == 50)
-		{
-			fade = 0;
-		}
-		break;
+
+		d3ddev->EndScene();
+
+		d3ddev->Present(NULL, NULL, NULL, NULL);
+
+		frame += 1;
+		subframe += 1;
 	}
-
-	d3ddev->EndScene();
-
-	d3ddev->Present(NULL, NULL, NULL, NULL);
-
-	frame += 1;
-	subframe += 1;
 }
 
 void init_game(void)
@@ -701,6 +1079,12 @@ void init_game(void)
 	NewTexture(L"data\\temp\\0x00000001", D3DFMT_DXT1, &textures[TEX_ADV_PRESENTBY]);
 	command(L"gx.exe", L"data\\bmp\\bmp_adv.tpl tpl 0 data\\temp\\0x00000002");
 	NewTexture(L"data\\temp\\0x00000002", D3DFMT_DXT2, &textures[TEX_ADV_AMUSEVIS]);
+	command(L"gx.exe", L"data\\bmp\\bmp_adv.tpl tpl 7 data\\temp\\0x00000003");
+	NewTexture(L"data\\temp\\0x00000003", D3DFMT_DXT2, &textures[TEX_ADV_CREATEDBY]);
+	rects[TEX_ADV_CREATEDBY].left = 32;
+	rects[TEX_ADV_CREATEDBY].right = 256-32;
+	rects[TEX_ADV_CREATEDBY].bottom = 256;
+	rects[TEX_ADV_CREATEDBY].top = 200;
 	textures[TEX_LOADING]->Release();
 }
 
