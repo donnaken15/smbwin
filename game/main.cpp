@@ -14,14 +14,22 @@ using namespace std;
 #pragma comment (lib, "d3d9.lib")
 #pragma comment (lib, "d3dx9.lib")
 
-#pragma region CTRLLER
+struct Monkey {
+	float x, y, z,
+		velocity;
+	byte bananas,
+		lives;
+	unsigned short curstg;
+	int score,
+		ctn;
+};
+
 struct ctrl {
-	double ctrlstick[4];
-	double camstick[4];
+	double ctrlstick[4],
+		    camstick[4];
 	byte dpad;
 	bool buttons[8]; // 0=A,1=B,2=Start,3=X,4=Y,5=Z,6=L,7=R
 };
-#pragma endregion
 
 #pragma region OBJECTS
 LPDIRECT3D9 d3d;
@@ -348,10 +356,8 @@ uintptr_t frame, subframe, score;
 
 unsigned short time = 0xE10, stage;
 
-byte $;
-
-int overridden_version = 0;
-byte fade = 0;
+int overridden_version = 0, $;
+byte fade = 0, maxctn;
 
 double pi = 3.1415926535897932384626433832795028841971693993751058209749445923;
 
@@ -364,11 +370,12 @@ D3DSWAPEFFECT overridden_swapfx = D3DSWAPEFFECT_DISCARD;
 struct CUSTOMVERTEX { FLOAT X, Y, Z, RHW; DWORD COLOR; };
 #define CUSTOMFVF (D3DFVF_XYZRHW | D3DFVF_DIFFUSE)
 
-byte screen = 0;
+byte screen = 0,
 
-byte keys[] =
+p1binds[] =
 #pragma region DEFAULT CONTROLS
 {
+	//PLAYER 1
 	'W', //Control Stick
 	'A',
 	'S',
@@ -388,14 +395,14 @@ byte keys[] =
 	'X', //Y
 	'C', //Z
 	'Q', //L
-	'E' //R
+	'E', //R
 };
 #pragma endregion
 
 ctrl controllers[4];
 
 signed int color;
-static bool freeze;
+static bool freeze, infctn;
 
 void initD3D(HWND hWnd);
 void render_frame(void);
@@ -412,7 +419,7 @@ void command(LPWSTR exec, LPWSTR args) {
 		args,
 		L"",
 		SW_HIDE);
-		CoUninitialize();
+	CoUninitialize();
 }
 
 void NewTexture(LPCWSTR fname, D3DFORMAT fmt, LPDIRECT3DTEXTURE9 *tex)
@@ -656,7 +663,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	wc.style = CS_HREDRAW | CS_VREDRAW;
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = hInstance;
-	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	//wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wc.lpszClassName = L"GMBJ8P";
 
 	ShowCursor(false);
@@ -669,7 +676,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
 		WS_OVERLAPPED | WS_SYSMENU | WS_MINIMIZEBOX,
 		GetSystemMetrics(SM_CXSCREEN) / 2 - SCREEN_WIDTH / 2,
 		GetSystemMetrics(SM_CYSCREEN) / 2 - SCREEN_HEIGHT / 2,
-		SCREEN_WIDTH+6, SCREEN_HEIGHT+34,
+		SCREEN_WIDTH + 6, SCREEN_HEIGHT + 34,
 		NULL,
 		NULL,
 		hInstance,
@@ -945,7 +952,6 @@ void initD3D(HWND hWnd)
 
 void render_frame(void)
 {
-
 	if (!freeze)
 	{
 		d3ddev->Clear(0, NULL, D3DCLEAR_TARGET, color, 0.0f, 0);

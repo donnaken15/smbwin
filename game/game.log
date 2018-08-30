@@ -1,6 +1,6 @@
 ﻿  main.cpp
-main.cpp(436): warning C4244: 'initializing' : conversion from 'unsigned short' to 'byte', possible loss of data
-main.cpp(437): warning C4172: returning address of local variable or temporary
+main.cpp(443): warning C4244: 'initializing' : conversion from 'unsigned short' to 'byte', possible loss of data
+main.cpp(444): warning C4172: returning address of local variable or temporary
   Generating code
   Finished generating code
   game.vcxproj -> E:\Super Monkey Ball Windows\game.exe
